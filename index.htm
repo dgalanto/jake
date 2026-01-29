@@ -61,11 +61,11 @@
       left:-10%;
       font-size:34px;
       font-weight:800;
-      color:rgba(255,255,255,0.95);
+      color:rgba(255,255,255,0.98);
       -webkit-text-stroke: 1px rgba(0,0,0,0.25);
       text-shadow: 0 6px 14px rgba(0,0,0,0.35);
       white-space:nowrap;
-      z-index: 4000;
+      z-index:5000; /* above the image */
       pointer-events:none;
       transform: translateX(0);
       animation: slide-across 4200ms linear forwards;
@@ -88,7 +88,7 @@
       max-height:40vh;
       border-radius:10px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.45);
-      z-index: 4000;
+      z-index:4000;
       opacity:0;
       pointer-events:none;
       animation: img-appear 4200ms ease forwards;
@@ -182,78 +182,112 @@
       ];
 
       // helper to pick random element
-      function rand(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
+ function rand(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
 
       const btn = document.getElementById('surpriseBtn');
+      const card = document.querySelector('.card');
       let switched = false;
+      let restoreTimer = null;
+      let cleanupTimer = null;
 
-      // remove any previous floating elements
       function cleanupFloat(){
-        const prevPhrase = document.querySelector('.float-phrase');
-        const prevImg = document.querySelector('.float-img');
-        if(prevPhrase) prevPhrase.remove();
-        if(prevImg) prevImg.remove();
+        const prevPhrase = document.querySelectorAll('.float-phrase');
+        const prevImg = document.querySelectorAll('.float-img');
+        prevPhrase.forEach(n => n.remove());
+        prevImg.forEach(n => n.remove());
+      }
+
+      function restoreInitial() {
+        // clear any pending timers
+        if (restoreTimer) { clearTimeout(restoreTimer); restoreTimer = null; }
+        if (cleanupTimer) { clearTimeout(cleanupTimer); cleanupTimer = null; }
+
+        // remove floating elements and dark state, show card again
+        cleanupFloat();
+        if (card) card.style.display = '';
+        document.body.classList.remove('dark');
+        switched = false;
       }
 
       btn.addEventListener('click', function(e){
         e.stopPropagation();
 
-        // change background to dark on first click (keeps previous behavior)
+        // hide the Hello box & button (hide the white section instead of removing)
+        if (card) {
+          card.style.display = 'none';
+        }
+
+        // switch background to dark
         if(!switched){
           document.body.classList.add('dark');
           switched = true;
         }
 
+        // clear previous timers and floats
+        if (restoreTimer) { clearTimeout(restoreTimer); restoreTimer = null; }
+        if (cleanupTimer) { clearTimeout(cleanupTimer); cleanupTimer = null; }
         cleanupFloat();
 
-        // create floating phrase element
-        const phraseText = rand(phrases);
-        const phraseEl = document.createElement('div');
-        phraseEl.className = 'float-phrase';
-        phraseEl.textContent = phraseText;
-
-        // randomize vertical position a bit (avoid overlapping the Hello box)
-        const minTop = 8;   // percent from top
-        const maxTop = 70;  // percent from top
-        const topPct = Math.floor(Math.random() * (maxTop - minTop + 1)) + minTop;
-        phraseEl.style.top = topPct + 'vh';
-
-        // choose a random image
+        // create and append the image (centered)
         const imgUrl = rand(images);
         const imgEl = document.createElement('img');
         imgEl.className = 'float-img';
         imgEl.src = imgUrl;
         imgEl.alt = "Dank meme";
-
-        // append to body
-        document.body.appendChild(phraseEl);
         document.body.appendChild(imgEl);
 
-        // ensure elements are removed after animation completes
-        const cleanupAfter = () => {
-          phraseEl.remove();
-          imgEl.remove();
-        };
+        // create phrase overlay and append (will be positioned once image has layout)
+        const phraseText = rand(phrases);
+        const phraseEl = document.createElement('div');
+        phraseEl.className = 'float-phrase';
+        phraseEl.textContent = phraseText;
+        phraseEl.style.opacity = '0';
+        document.body.appendChild(phraseEl);
 
-        // remove after animation duration (slightly longer than CSS animation)
-        setTimeout(cleanupAfter, 4600);
-
-        // Optional: play a tiny sound (commented out because many browsers block autoplay)
-        // const audio = new Audio('https://example.com/pop.mp3'); audio.play().catch(()=>{});
-      });
-
-      // allow clicking outside to clear animations early
-      document.addEventListener('click', function(e){
-        if(!btn.contains(e.target)){
-          cleanupFloat();
+        // position phrase above the image when image is ready
+        function positionAndShowPhrase(){
+          const imgRect = imgEl.getBoundingClientRect();
+          // place phrase slightly above the image top
+          const topPx = Math.max(8, imgRect.top - 28); // keep some margin from top
+          phraseEl.style.top = topPx + 'px';
+          // center phrase horizontally around the image center by default animation (animation uses left/transform)
+          // reveal phrase (allow CSS animation to run)
+          phraseEl.style.opacity = '';
         }
+
+        if (imgEl.complete && imgEl.naturalWidth !== 0) {
+          positionAndShowPhrase();
+        } else {
+          imgEl.addEventListener('load', positionAndShowPhrase, { once: true });
+          // fallback in case load event doesn't fire quickly
+          setTimeout(positionAndShowPhrase, 300);
+        }
+
+        // Schedule cleanup of floating elements shortly after animation ends (4.6s)
+        cleanupTimer = setTimeout(() => {
+          cleanupFloat();
+          cleanupTimer = null;
+        }, 4600);
+
+        // After 5 seconds restore the initial page (show Hello Jake again and reset background)
+        restoreTimer = setTimeout(() => {
+          restoreInitial();
+        }, 5000);
       });
 
-      // keyboard escape to clear
+      // allow clicking outside to clear animations early and restore
+      document.addEventListener('click', function(e){
+        // if user clicks anywhere, restore immediately
+        restoreInitial();
+      });
+
+      // keyboard escape to clear and restore
       document.addEventListener('keydown', function(e){
-        if(e.key === 'Escape') cleanupFloat();
+        if(e.key === 'Escape') restoreInitial();
       });
     })();
   </script>
 </body>
 </html>
+
+
