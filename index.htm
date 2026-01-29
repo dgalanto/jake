@@ -14,7 +14,7 @@
     }
 
     /* page layout */
-    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);box-sizing:border-box;transition:background-color 360ms ease;}
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);box-sizing:border-box;}
     /* ensure Hello is 1 inch from the top */
     body { padding-top: 1in; }
 
@@ -55,10 +55,15 @@
     }
     .btn:active{transform:translateY(1px);}
 
-    /* floating phrase */
+    /* floating phrase
+       - left will be assigned from JS (center over image)
+       - animate transform so we don't fight explicit left values set by JS
+       - --slide-distance controls how far it travels; JS updates per-phrase for viewport adapt
+       - animation is only applied when the 'playing' class is added from JS to avoid race issues */
     .float-phrase {
       position:fixed;
-      left:-10%;
+      left:50%; /* will be updated by JS to the image center */
+      top:8px;  /* initial fallback; precise top is set in JS */
       font-size:34px;
       font-weight:800;
       color:rgba(255,255,255,0.98);
@@ -67,15 +72,30 @@
       white-space:nowrap;
       z-index:5000; /* above the image */
       pointer-events:none;
-      transform: translateX(0);
-      animation: slide-across 4200ms linear forwards;
+      /* default slide distance (will be overridden by JS per-element), use vw for natural scaling */
+      --slide-distance: 250vw;
+      /* Start off-left using transform; animation also works on transform and references --slide-distance */
+      transform: translateX(calc(-1 * var(--slide-distance))) translateY(0) scale(1);
+      max-width: 90vw;
+      text-align: center;
+      padding: 2px 8px;
+      box-sizing: border-box;
+      will-change: transform, opacity;
+      opacity: 0; /* hidden until we add playing class */
+    }
+
+    /* slowed phrase animation: doubled duration (half speed) */
+    .float-phrase.playing {
+      animation: slide-across 8400ms linear forwards;
+      opacity: 1;
     }
 
     @keyframes slide-across {
-      0% { left: -30%; opacity: 0; transform: translateX(0) scale(1); }
-      6% { opacity: 1; }
-      50% { left: 50%; transform: translateX(-50%) scale(1.02); }
-      100% { left: 130%; opacity: 0; transform: translateX(0) scale(0.98); }
+      /* transform-only animation: element's left anchor remains fixed (set by JS) */
+      0%   { opacity: 0; transform: translateX(calc(-1 * var(--slide-distance))) scale(1); }
+      6%   { opacity: 1; }
+      50%  { transform: translateX(0) scale(1.02); }   /* centered at the anchor */
+      100% { opacity: 0; transform: translateX(calc(var(--slide-distance))) scale(0.98); } /* exit to right */
     }
 
     /* floating image */
@@ -84,16 +104,28 @@
       left:50%;
       top:50%;
       transform: translate(-50%, -50%) scale(0.85);
-      max-width:40vw;
-      max-height:40vh;
+      /* responsive sizing: constrain by viewport */
+      width: min(60vw, 720px);
+      height: auto;
+      max-height: 75vh;
       border-radius:10px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.45);
       z-index:4000;
       opacity:0;
       pointer-events:none;
-      animation: img-appear 4200ms ease forwards;
+      /* match image animation duration to phrase so they stay in sync (half speed applied) */
+      animation: img-appear 8400ms ease forwards;
       object-fit:cover;
       background: #111;
+      touch-action: none;
+      visibility: visible;
+    }
+
+    /* If the image is marked ready (loaded), stop the long animation and ensure it is visible.
+       This avoids cases where the element is added after the animation timeline has progressed. */
+    .float-img[data-ready="true"] {
+      animation: none !important;
+      opacity: 1 !important;
     }
 
     @keyframes img-appear {
@@ -112,7 +144,7 @@
 
     @media (max-width:520px){
       .float-phrase { font-size:22px; }
-      .float-img { max-width:90vw; max-height:45vh; }
+      .float-img { width: min(90vw, 520px); max-height:55vh; }
       .hello h1{font-size:34px;}
     }
   </style>
@@ -122,6 +154,7 @@
     <div class="card" role="main" aria-labelledby="hello-title">
       <div class="hello" aria-hidden="false">
         <h1 id="hello-title">Hello Jake</h1>
+         <div id="hello-tike">A New Experience Every Time You Press the Button</div>
       </div>
 
       <div class="action" aria-hidden="false">
@@ -159,7 +192,8 @@
         "I Love Cheeks"
       ];
 
-      // curated "dank" meme images (replace these URLs with your preferred sources if needed)
+      // curated "dank" meme images (replace these URLs with your preferred sources if needed).
+      // NOTE: Some hosts may block hotlinking or return redirects — we include a reliable fallback (picsum.photos)
       const images = [
         "https://cleanmemes.com/wp-content/uploads/2026/01/img_4363.jpg",
         "https://gratisography.com/wp-content/uploads/2024/10/gratisography-happy-cone-800x525.jpg",
@@ -181,6 +215,13 @@
         "https://gratisography.com/wp-content/uploads/2019/05/gratisography-tiny-man-free-stock-photo-800x525.jpg"
       ];
 
+      // reliable fallback images (picsum). We'll try these if chosen image fails to load.
+      const fallback = [
+        "https://picsum.photos/800/600?random=1",
+        "https://picsum.photos/900/700?random=2",
+        "https://picsum.photos/700/500?random=3"
+      ];
+
       // helper to pick random element
  function rand(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
 
@@ -190,10 +231,17 @@
       let restoreTimer = null;
       let cleanupTimer = null;
 
+      // map to keep per-phrase resize handlers so we can remove them on cleanup
+      const resizeHandlers = new WeakMap();
+
       function cleanupFloat(){
         const prevPhrase = document.querySelectorAll('.float-phrase');
         const prevImg = document.querySelectorAll('.float-img');
-        prevPhrase.forEach(n => n.remove());
+        prevPhrase.forEach(n => {
+          const h = resizeHandlers.get(n);
+          if (h) window.removeEventListener('resize', h);
+          n.remove();
+        });
         prevImg.forEach(n => n.remove());
       }
 
@@ -234,6 +282,36 @@
         imgEl.className = 'float-img';
         imgEl.src = imgUrl;
         imgEl.alt = "Dank meme";
+        // prefer eager loading so we see it quickly
+        imgEl.loading = 'eager';
+        // keep track of retries
+        let retries = 0;
+        const maxRetries = 3;
+
+        // error handler — try fallback images if host blocks or image 404s
+        imgEl.addEventListener('error', function handleError() {
+          console.warn('float-img load error, retrying. src=', imgEl.src);
+          retries++;
+          if (retries <= maxRetries) {
+            // try another image (mixing in fallback to increase chance)
+            const nextSrc = retries === maxRetries ? rand(fallback) : rand(images.concat(fallback));
+            imgEl.src = nextSrc;
+          } else {
+            // last resort: show a solid color placeholder (1x1 PNG data URI) to make sure element exists,
+            // then mark ready so UI doesn't stay hidden.
+            imgEl.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=';
+            imgEl.removeEventListener('error', handleError);
+          }
+        }, { once: false });
+
+        // when image loads, position the phrase and ensure the image is shown.
+        imgEl.addEventListener('load', function onLoad() {
+          // mark ready to bypass the long CSS animation that may have started earlier
+          imgEl.setAttribute('data-ready', 'true');
+          // position phrase (called below) will use getBoundingClientRect on the loaded image
+          positionAndShowPhrase();
+        }, { once: true });
+
         document.body.appendChild(imgEl);
 
         // create phrase overlay and append (will be positioned once image has layout)
@@ -241,38 +319,90 @@
         const phraseEl = document.createElement('div');
         phraseEl.className = 'float-phrase';
         phraseEl.textContent = phraseText;
-        phraseEl.style.opacity = '0';
+        // set white-space to normal on very small viewports so long phrases wrap
+        if (window.innerWidth < 420) phraseEl.style.whiteSpace = 'normal';
         document.body.appendChild(phraseEl);
+
+        // function to compute and set slide distance based on viewport width (longer distance on wide screens)
+        function updateSlideDistance() {
+          const vw = window.innerWidth;
+          // multiplier controls how many viewport widths the phrase will travel.
+          // The result is expressed in vw to scale naturally with viewport.
+          // base multiplier: for small screens travel ~1.6x width, large screens increase up to ~3.5x
+          const multiplier = Math.min(3.5, Math.max(1.6, vw / 1200 * 2.4));
+          const distanceVw = Math.round(multiplier * 100); // multiplier * 100vw
+          phraseEl.style.setProperty('--slide-distance', distanceVw + 'vw');
+        }
 
         // position phrase above the image when image is ready
         function positionAndShowPhrase(){
+          // guard in case image was removed
+          if (!document.body.contains(imgEl) || !document.body.contains(phraseEl)) return;
           const imgRect = imgEl.getBoundingClientRect();
-          // place phrase slightly above the image top
-          const topPx = Math.max(8, imgRect.top - 28); // keep some margin from top
+
+          // compute top such that the phrase sits above the image, with small margins,
+          // but clamp so it doesn't go off-screen
+          // ensure phrase has layout (offsetHeight) for correct clamping
+          const phraseHeight = phraseEl.offsetHeight || 28;
+          let topPx = imgRect.top - phraseHeight - 12;
+          topPx = Math.max(8, Math.min(topPx, window.innerHeight - phraseHeight - 8));
           phraseEl.style.top = topPx + 'px';
-          // center phrase horizontally around the image center by default animation (animation uses left/transform)
-          // reveal phrase (allow CSS animation to run)
-          phraseEl.style.opacity = '';
+
+          // compute center X of the image and convert to viewport percentage so the phrase anchors above image
+          const centerX = imgRect.left + imgRect.width / 2;
+          const leftPercent = (centerX / window.innerWidth) * 100;
+          phraseEl.style.left = leftPercent + '%';
+
+          // update slide distance (depends on current viewport)
+          updateSlideDistance();
+
+          // start the animation by adding the playing class (avoids inline opacity races)
+          // force a reflow so the browser picks up the updated --slide-distance before the animation starts
+          // (reading offsetWidth triggers a reflow)
+          void phraseEl.offsetWidth;
+          phraseEl.classList.add('playing');
         }
 
+        // attach a resize handler so the slide distance updates while animation is running if the user resizes
+        const resizeHandler = () => {
+          // update distance and re-position horizontally if image layout changed
+          updateSlideDistance();
+          if (document.body.contains(imgEl) && document.body.contains(phraseEl)) {
+            const imgRect = imgEl.getBoundingClientRect();
+            const centerX = imgRect.left + imgRect.width / 2;
+            const leftPercent = (centerX / window.innerWidth) * 100;
+            phraseEl.style.left = leftPercent + '%';
+            // also recompute top
+            const phraseHeight = phraseEl.offsetHeight || 28;
+            let topPx = imgRect.top - phraseHeight - 12;
+            topPx = Math.max(8, Math.min(topPx, window.innerHeight - phraseHeight - 8));
+            phraseEl.style.top = topPx + 'px';
+          }
+        };
+        // store handler so cleanup can remove it
+        resizeHandlers.set(phraseEl, resizeHandler);
+        window.addEventListener('resize', resizeHandler);
+
+        // if image already cached/complete, position immediately
         if (imgEl.complete && imgEl.naturalWidth !== 0) {
+          // mark ready and position
+          imgEl.setAttribute('data-ready', 'true');
           positionAndShowPhrase();
         } else {
-          imgEl.addEventListener('load', positionAndShowPhrase, { once: true });
           // fallback in case load event doesn't fire quickly
           setTimeout(positionAndShowPhrase, 300);
         }
 
-        // Schedule cleanup of floating elements shortly after animation ends (4.6s)
+        // Schedule cleanup of floating elements shortly after animation ends (now doubled)
         cleanupTimer = setTimeout(() => {
           cleanupFloat();
           cleanupTimer = null;
-        }, 4600);
+        }, 8600); // slightly after 8400ms animation
 
-        // After 5 seconds restore the initial page (show Hello Jake again and reset background)
+        // After ~9s restore the initial page (show Hello Jake again and reset background)
         restoreTimer = setTimeout(() => {
           restoreInitial();
-        }, 5000);
+        }, 9000);
       });
 
       // allow clicking outside to clear animations early and restore
@@ -289,5 +419,3 @@
   </script>
 </body>
 </html>
-
-
