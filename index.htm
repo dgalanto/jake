@@ -6,98 +6,114 @@
   <title>Jake</title>
   <style>
     :root{
-      --bg: #f7fbff;
-      --text: #13294B; /* requested color */
-      --card-bg: #fff;
-      --accent:#0969da;
-      --radius:14px;
-    }
-    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);}
-    .wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:3rem;}
-    .card{
-      width:min(920px,92%);
-      background:transparent;
-      text-align:center;
+      --bg: #FF5F05;        /* initial background */
+      --text: #13294B;
+      --card-bg: #ffffff;
+      --accent: #0969da;
+      --radius: 12px;
     }
 
-    /* White rounded area that contains "Hello Jake" */
+    /* page layout */
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);box-sizing:border-box;transition:background-color 360ms ease;}
+    /* ensure Hello is 1 inch from the top */
+    body { padding-top: 1in; }
+
+    .wrap{min-height:calc(100% - 1in);display:flex;align-items:flex-start;justify-content:center;padding:0 24px 40px;}
+    .card{width:min(820px,92%);text-align:center;position:relative;z-index:1;}
+
+    /* Hello box */
     .hello {
-      background:var(--card-bg);
-      border-radius: var(--radius);
-      padding: 2rem 1.5rem;
       display:inline-block;
-      box-shadow: 0 8px 30px rgba(9,20,40,0.06);
-      min-width: min(480px,90%);
+      background:var(--card-bg);
+      padding:18px 28px;
+      border-radius:var(--radius);
+      box-shadow:0 8px 20px rgba(0,0,0,0.08);
+      margin:0 auto;
+      min-width:260px;
+      border: 1px solid rgba(0,0,0,0.06);
     }
     .hello h1{
       margin:0;
-      font-weight:700;
       color:var(--text);
-      font-size:48px; /* requested size */
+      font-size:48px;
       line-height:1;
-      letter-spacing: -0.5px;
+      font-weight:700;
+      letter-spacing:-0.5px;
     }
 
-    /* Button below the white box, positioned 1 inch below */
-    .action {
-      display:inline-block;
-      margin-top:1in; /* requested 1 inch distance */
-    }
+    /* Button directly below the hello box (just below) */
+    .action{margin-top:8px;}
     .btn{
-      -webkit-appearance:none;
       border:0;
-      background:var(--accent);
-      color:white;
-      padding:0.85rem 1.25rem;
+      background: linear-gradient(180deg,var(--accent),#0956c4);
+      color:#fff;
+      padding:0.65rem 1.15rem;
       font-size:16px;
       border-radius:10px;
       cursor:pointer;
-      box-shadow: 0 6px 18px rgba(9,20,40,0.12);
+      box-shadow:0 8px 20px rgba(0,0,0,0.12);
     }
     .btn:active{transform:translateY(1px);}
 
-    /* result area that appears from the bottom */
-    .result {
-      position: fixed;
-      left: 50%;
-      bottom: 24px; /* final bottom offset */
-      transform: translate(-50%, 120%); /* start off-screen (below) */
-      display:flex;
-      gap:1rem;
-      align-items:center;
-      background: rgba(255,255,255,0.98);
-      padding: 0.75rem 1rem;
-      border-radius: 12px;
-      box-shadow: 0 16px 40px rgba(9,20,40,0.12);
-      max-width: min(92%, 900px);
-      transition: transform 420ms cubic-bezier(.2,.9,.2,1), opacity 320ms;
-      opacity:0;
-      z-index: 1200;
-    }
-    .result.show{
-      transform: translate(-50%, 0%); /* slide into view from bottom */
-      opacity:1;
-    }
-    .result .text{
-      font-size:18px;
-      font-weight:600;
-      color:var(--text);
+    /* floating phrase */
+    .float-phrase {
+      position:fixed;
+      left:-10%;
+      font-size:34px;
+      font-weight:800;
+      color:rgba(255,255,255,0.95);
+      -webkit-text-stroke: 1px rgba(0,0,0,0.25);
+      text-shadow: 0 6px 14px rgba(0,0,0,0.35);
       white-space:nowrap;
-    }
-    .result .gif{
-      max-height:90px;
-      max-width:160px;
-      border-radius:8px;
-      object-fit:cover;
-      box-shadow:0 8px 18px rgba(9,20,40,0.08);
+      z-index: 4000;
+      pointer-events:none;
+      transform: translateX(0);
+      animation: slide-across 4200ms linear forwards;
     }
 
-    /* make gif larger on small screens */
+    @keyframes slide-across {
+      0% { left: -30%; opacity: 0; transform: translateX(0) scale(1); }
+      6% { opacity: 1; }
+      50% { left: 50%; transform: translateX(-50%) scale(1.02); }
+      100% { left: 130%; opacity: 0; transform: translateX(0) scale(0.98); }
+    }
+
+    /* floating image */
+    .float-img {
+      position:fixed;
+      left:50%;
+      top:50%;
+      transform: translate(-50%, -50%) scale(0.85);
+      max-width:40vw;
+      max-height:40vh;
+      border-radius:10px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+      z-index: 4000;
+      opacity:0;
+      pointer-events:none;
+      animation: img-appear 4200ms ease forwards;
+      object-fit:cover;
+      background: #111;
+    }
+
+    @keyframes img-appear {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); filter: blur(6px) saturate(.8); }
+      12% { opacity: 1; transform: translate(-50%, -50%) scale(1); filter: blur(0) saturate(1.05); }
+      70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); filter: blur(2px) saturate(.9); }
+    }
+
+    /* dark/background state */
+    body.dark {
+      --bg: #13294B;     /* background after click */
+      --text: #ffffff;
+    }
+    body.dark .hello { background: #ffffff; } /* keep hello white on dark background */
+
     @media (max-width:520px){
+      .float-phrase { font-size:22px; }
+      .float-img { max-width:90vw; max-height:45vh; }
       .hello h1{font-size:34px;}
-      .result {flex-direction:column; gap:.5rem; padding:0.5rem; bottom:16px;}
-      .result .gif{max-height:150px; max-width:90vw;}
-      .result .text{font-size:16px}
     }
   </style>
 </head>
@@ -109,115 +125,133 @@
       </div>
 
       <div class="action" aria-hidden="false">
-        <button id="surpriseBtn" class="btn" aria-controls="result" aria-expanded="false">Surprise me</button>
+        <button id="surpriseBtn" class="btn" aria-controls="result" aria-expanded="false">Click Here</button>
       </div>
     </div>
   </div>
 
-  <!-- result container (hidden by default) -->
-  <div id="result" class="result" role="status" aria-live="polite">
-    <div class="text" id="resultText"></div>
-    <img id="resultGif" class="gif" src="" alt="Random animated GIF">
-  </div>
+  <!-- hidden fallback result container (not used for floating effect but left for accessibility) -->
+  <div id="result" style="display:none" aria-live="polite"></div>
 
   <script>
     (function(){
-      // A small curated list of public GIF URLs (feel free to replace with your own)
-      const gifs = [
-        "https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif",
-        "https://media.giphy.com/media/26xBwdIuRJiAiT6PO/giphy.gif",
-        "https://media.giphy.com/media/l0K4n1g5p1w9kXQ0A/giphy.gif",
-        "https://media.giphy.com/media/3o7TKMt1VVNkHV2PaE/giphy.gif",
-        "https://media.giphy.com/media/13HgwGsXF0aiGY/giphy.gif",
-        "https://media.giphy.com/media/5GoVLqeAOo6PK/giphy.gif"
+      // exact phrases requested
+      const phrases = [
+        "You Are a Baby",
+        "Fa Fa Foo Foo",
+        "PSK Forever",
+        "Frick You",
+        "Chipotle for Life",
+        "DJ Jake Rocks Red Lion",
+        "Never Stop Dabbing",
+        "So Much Rizz",
+        "Wicked Soldiers Rock",
+        "I Went to New Trier",
+        "Beep Beep Bop Bee Boo",
+        "Rocket In Your Pocket",
+        "It Smells Like Cows",
+        "Dada Loves Jake",
+        "Jakey The Jake !",
+        "Drake > Kendrick",
+        "What if Jake Got a Low Taper Fade",
+        "Arc: Survival Evolved Rules",
+        "Baginky!",
+        "I Love Cheeks"
       ];
 
-      // Phrases: only ONE phrase will be shown per click (random)
-      const phrases = [
-        "Nice choice!",
-        "Here you go!",
-        "A little surprise:",
-        "Enjoy this one!",
-        "Hope this makes you smile!",
-        "Random pick:"
+      // curated "dank" meme images (replace these URLs with your preferred sources if needed)
+      const images = [
+        "https://cleanmemes.com/wp-content/uploads/2026/01/img_4363.jpg",
+        "https://gratisography.com/wp-content/uploads/2024/10/gratisography-happy-cone-800x525.jpg",
+        "https://gratisography.com/wp-content/uploads/2024/01/gratisography-cyber-kitty-800x525.jpg",
+        "https://gratisography.com/wp-content/uploads/2023/05/gratisography-wedding-dog-free-stock-photo-800x525.jpg",
+        "https://gratisography.com/wp-content/uploads/2019/06/gratisography-bunny-newspaper-free-stock-photo-800x525.jpg",
+        "https://gratisography.com/wp-content/uploads/2019/09/gratisography-paper-mache-free-stock-photo-800x525.jpg",
+        "https://gratisography.com/wp-content/uploads/2020/07/gratisography-tiny-big-head-free-stock-photo-800x525.jpg",
+        "https://gratisography.com/wp-content/uploads/2021/06/gratisography-donut-fingers-hands-free-stock-photo-800x525.jpg",
+        "https://gratisography.com/wp-content/uploads/2022/06/gratisography-bath-snorkeling-free-stock-photo-1170x780.jpg",
+        "https://gratisography.com/wp-content/uploads/2023/02/gratisography-13-mustache-girl-free-stock-photo-800x525.jpg",
+        "https://images.pexels.com/photos/7395916/pexels-photo-7395916.jpeg",
+        "https://gratisography.com/wp-content/uploads/2018/05/gratisography-104H-free-stock-photo-800x525.jpg",
+        "https://gratisography.com/wp-content/uploads/2018/05/gratisography-330H-free-stock-photo-800x525.jpg",
+        "https://images.pexels.com/photos/35756665/pexels-photo-35756665.jpeg",
+        "https://images.pexels.com/photos/6156550/pexels-photo-6156550.jpeg",
+        "https://images.pexels.com/photos/5541007/pexels-photo-5541007.jpeg",
+        "https://images.pexels.com/photos/4118631/pexels-photo-4118631.jpeg",
+        "https://gratisography.com/wp-content/uploads/2019/05/gratisography-tiny-man-free-stock-photo-800x525.jpg"
       ];
+
+      // helper to pick random element
+      function rand(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
 
       const btn = document.getElementById('surpriseBtn');
-      const result = document.getElementById('result');
-      const resultText = document.getElementById('resultText');
-      const resultGif = document.getElementById('resultGif');
+      let switched = false;
 
-      // helper: pick random element
-      function rand(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
-
-      // Ensure the gif loads before showing (to avoid flicker)
-      function showFromBottom(text, gifUrl){
-        // Set aria
-        btn.setAttribute('aria-expanded', 'true');
-
-        // temporarily hide result to reset animation
-        result.classList.remove('show');
-        result.style.opacity = '0';
-
-        // update content
-        resultText.textContent = text;
-        resultGif.src = gifUrl;
-        resultGif.alt = text + " (animated GIF)";
-
-        // When the image is loaded (or on error), show the container
-        const onLoad = function(){
-          // ensure minimal delay so transform transition applies
-          requestAnimationFrame(()=> {
-            result.classList.add('show');
-          });
-          cleanup();
-        };
-        const onError = function(){
-          // If gif fails, still show the phrase only
-          resultGif.style.display = 'none';
-          requestAnimationFrame(()=> result.classList.add('show'));
-          cleanup();
-        };
-        function cleanup(){
-          resultGif.removeEventListener('load', onLoad);
-          resultGif.removeEventListener('error', onError);
-          // make sure gif element is visible again next time
-          resultGif.style.display = '';
-        }
-        resultGif.addEventListener('load', onLoad);
-        resultGif.addEventListener('error', onError);
-
-        // In case the browser has cached the image and 'load' already fired,
-        // check readyState / complete:
-        if(resultGif.complete && resultGif.naturalWidth !== 0){
-          onLoad();
-        }
+      // remove any previous floating elements
+      function cleanupFloat(){
+        const prevPhrase = document.querySelector('.float-phrase');
+        const prevImg = document.querySelector('.float-img');
+        if(prevPhrase) prevPhrase.remove();
+        if(prevImg) prevImg.remove();
       }
 
-      // Hide current result when clicking outside or clicking button again will re-show a new one.
-      function hideResult(){
-        result.classList.remove('show');
-        btn.setAttribute('aria-expanded','false');
-      }
+      btn.addEventListener('click', function(e){
+        e.stopPropagation();
 
-      btn.addEventListener('click', function(){
-        // pick one phrase and one gif and show them
-        const phrase = rand(phrases);
-        const gif = rand(gifs);
-        // ensure only one phrase appears: we replace content each time
-        showFromBottom(phrase, gif);
+        // change background to dark on first click (keeps previous behavior)
+        if(!switched){
+          document.body.classList.add('dark');
+          switched = true;
+        }
+
+        cleanupFloat();
+
+        // create floating phrase element
+        const phraseText = rand(phrases);
+        const phraseEl = document.createElement('div');
+        phraseEl.className = 'float-phrase';
+        phraseEl.textContent = phraseText;
+
+        // randomize vertical position a bit (avoid overlapping the Hello box)
+        const minTop = 8;   // percent from top
+        const maxTop = 70;  // percent from top
+        const topPct = Math.floor(Math.random() * (maxTop - minTop + 1)) + minTop;
+        phraseEl.style.top = topPct + 'vh';
+
+        // choose a random image
+        const imgUrl = rand(images);
+        const imgEl = document.createElement('img');
+        imgEl.className = 'float-img';
+        imgEl.src = imgUrl;
+        imgEl.alt = "Dank meme";
+
+        // append to body
+        document.body.appendChild(phraseEl);
+        document.body.appendChild(imgEl);
+
+        // ensure elements are removed after animation completes
+        const cleanupAfter = () => {
+          phraseEl.remove();
+          imgEl.remove();
+        };
+
+        // remove after animation duration (slightly longer than CSS animation)
+        setTimeout(cleanupAfter, 4600);
+
+        // Optional: play a tiny sound (commented out because many browsers block autoplay)
+        // const audio = new Audio('https://example.com/pop.mp3'); audio.play().catch(()=>{});
       });
 
-      // optional: hide result if user clicks anywhere outside it
+      // allow clicking outside to clear animations early
       document.addEventListener('click', function(e){
-        if(!result.contains(e.target) && !btn.contains(e.target)){
-          hideResult();
+        if(!btn.contains(e.target)){
+          cleanupFloat();
         }
       });
 
-      // keyboard: close on Escape
+      // keyboard escape to clear
       document.addEventListener('keydown', function(e){
-        if(e.key === 'Escape') hideResult();
+        if(e.key === 'Escape') cleanupFloat();
       });
     })();
   </script>
