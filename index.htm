@@ -1,11 +1,108 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hello Jake</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Click Here</title>
+  <style>
+    :root{--bg-initial:#FF5F05;--bg-active:#13294B;--text:#ffffff}
+    html,body{height:100%;margin:0;background:var(--bg-initial);color:var(--text);}
+    body{display:flex;align-items:center;justify-content:center}
+    /* centered button only */
+    button#go{
+      appearance:none;border:0;padding:18px 32px;border-radius:12px;background:rgba(255,255,255,0.08);color:var(--text);font-size:20px;cursor:pointer;border:2px solid rgba(255,255,255,0.18);
+    }
+    /* floating items */
+    .floatItem{position:fixed;left:0;top:0;display:flex;align-items:center;gap:10px;pointer-events:none;font-family:system-ui,Arial;color:var(--text);will-change:transform,opacity}
+    .emoji{font-size:34px;line-height:1}
+    .phrase{font-size:18px;font-weight:600;background:transparent;padding:6px 10px;border-radius:8px;white-space:nowrap;color:var(--text);text-shadow:0 2px 8px rgba(0,0,0,0.35)}
+    @keyframes floatUp{0%{transform:translateY(0) translateX(0) rotate(0);opacity:1}100%{transform:translateY(-120vh) translateX(var(--drift,0px)) rotate(var(--rot,0deg));opacity:0}}
+    button#go:focus{outline:3px solid rgba(255,255,255,0.18);outline-offset:4px}
+  </style>
 </head>
 <body>
-    <h1>Hello Jake</h1>
+  <button id="go" aria-label="Click Here">Click Here</button>
+
+  <script>
+    (function(){
+      const phrases = [
+        "You Are a Baby",
+        "Fa Fa Foo Foo",
+        "PSK Forever",
+        "Frick You",
+        "Chipotle for Life",
+        "DJ Jake Rocks Red Lion",
+        "Never Stop Dabbing",
+        "So Much Rizz",
+        "What if Jake Got a Low Taper Fade",
+        "Arc: Survival Evolved Rules",
+        "Baginky!",
+        "I Love Cheeks"
+      ];
+
+      const emojis = ['🎉','🔥','😎','🍕','💥','🎧','🚀','🌟','💯','🍔','🎮','❤️'];
+
+      const btn = document.getElementById('go');
+
+      function rand(min,max){return Math.random()*(max-min)+min}
+      function choose(arr){return arr[Math.floor(Math.random()*arr.length)]}
+
+      function spawn(x,y){
+        const item = document.createElement('div');
+        item.className = 'floatItem';
+        item.style.left = x + 'px';
+        item.style.top = y + 'px';
+
+        const drift = Math.round((Math.random()*2-1)*220);
+        const rot = Math.round((Math.random()*2-1)*360);
+        const duration = rand(3.5,7.0);
+
+        item.style.setProperty('--drift', drift + 'px');
+        item.style.setProperty('--rot', rot + 'deg');
+
+        const e = document.createElement('div'); e.className='emoji'; e.textContent = choose(emojis);
+        const p = document.createElement('div'); p.className='phrase'; p.textContent = choose(phrases);
+
+        item.appendChild(e);
+        item.appendChild(p);
+
+        const scale = rand(0.9,1.25);
+        item.style.fontSize = (16*scale) + 'px';
+
+        const startOffsetX = Math.round(rand(-18,18));
+        const startOffsetY = Math.round(rand(-12,12));
+        item.style.transform = `translate(${startOffsetX}px, ${startOffsetY}px)`;
+
+        document.body.appendChild(item);
+
+        // animate upward
+        item.style.animation = `floatUp ${duration}s ease-out forwards`;
+        item.style.animationDelay = (rand(0,0.15)) + 's';
+
+        setTimeout(()=>{ item.remove(); }, (duration + 0.3 + parseFloat(item.style.animationDelay)) * 1000);
+      }
+
+      btn.addEventListener('click', (ev)=>{
+        // change background and ensure text remains white
+        document.body.style.background = getComputedStyle(document.documentElement).getPropertyValue('--bg-active').trim() || '#13294B';
+        document.body.style.color = 'var(--text)';
+
+        const r = btn.getBoundingClientRect();
+        const originX = r.left + r.width/2;
+        const originY = r.top + r.height/2;
+
+        const count = Math.floor(rand(8,16));
+        for(let i=0;i<count;i++){ 
+          setTimeout(()=>{
+            const x = originX + rand(-40,40);
+            const y = originY + rand(-20,20);
+            spawn(x,y);
+          }, i * rand(40,120));
+        }
+      });
+
+      btn.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); } });
+    })();
+  </script>
 </body>
 </html>
